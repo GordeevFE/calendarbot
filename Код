@@ -1,0 +1,71 @@
+import telebot
+from datetime import datetime
+import datetime as dt
+
+bot = telebot.TeleBot('6864390799:AAFppPF292fS1X0Jis2S-q7bUxMHpd5qHdw')
+
+
+@bot.message_handler(commands=['start'])
+def send_welcome(message):
+    bot.reply_to(message, "Привет! Я бот, который поможет тебе записывать список дел.")
+
+
+@bot.message_handler(commands=['help'])
+def get_help(message):
+    bot.reply_to(message, 'Для того, чтобы записать событие, пропишите /add')
+
+
+@bot.message_handler(commands=['add'])
+def add_task(message):
+    bot.reply_to(message, "Напишите задание (событие), которое нужно добавить в календарь.")
+
+
+@bot.message_handler(func=lambda message: True)
+def get_date(message):
+    task = message.text
+    try:
+        with open('todo_list.txt', 'a') as file:
+            file.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]: {task}\n")
+        bot.reply_to(message, f"Теперь введите дату напоминания в формате ггггммддччмм:")
+        bot.register_next_step_handler(message, process_date)
+    except Exception as e:
+        bot.reply_to(message, f"Произошла ошибка: {e}")
+
+
+def process_date(message):
+    try:
+        date = dt.datetime.strptime(message.text, '%Y%m%d%H%M')
+        current_date = dt.datetime.now()
+        if date > current_date:
+            days_diff = (date - current_date).days
+            bot.send_message(message.chat.id, f"Оставшиеся дни до отправки сообщения: {days_diff}")
+        else:
+            bot.send_message(message.chat.id, "Указанная дата уже прошла")
+    except ValueError:
+        bot.send_message(message.chat.id, "Некорректный формат даты. Повторите попытку.")
+
+
+@bot.message_handler(func=lambda message: True)
+def handle_message(message):
+    task = message.text
+    try:
+        with open('todo_list.txt', 'a') as file:
+            file.write(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]: {task}\n")
+        bot.reply_to(message, f"Задание '{task}' успешно добавлено в список дел.")
+    except Exception as e:
+        bot.reply_to(message, f"Произошла ошибка: {e}")
+
+
+def get_todo_list():
+    current_datetime = datetime.now()
+    formatted_current_datetime = current_datetime.strftime('%Y-%m-%d %H:%M')
+    todo_list = []
+    with open('todo_list.txt', 'r') as file:
+        for line in file:
+            if formatted_current_datetime in line:
+                todo_list.append(line.split(': ')[1].strip())
+
+    return todo_list
+
+
+bot.polling()
